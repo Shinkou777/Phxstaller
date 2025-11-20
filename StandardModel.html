@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终极粒子物理实验室 | Ultimate Particle Physics Lab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #030305;
+            --panel-bg: rgba(12, 12, 16, 0.95);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --accent-cyan: #00f3ff;
+            --accent-red: #ff2a6d;
+            --accent-yellow: #ffc107;
+            --accent-purple: #bc13fe;
+            --text-main: #e0e6ed;
+            --text-dim: #6f7a8c;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+        body {
+            background-color: var(--bg-dark);
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Navigation */
+        .navbar {
+            height: 55px;
+            background: rgba(0,0,0,0.9);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-controls button {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-dim);
+            padding: 5px 12px;
+            cursor: pointer;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            transition: 0.3s;
+        }
+        .nav-controls button:hover { color: var(--text-main); }
+        .nav-controls button.active {
+            color: var(--accent-cyan);
+            border-bottom: 2px solid var(--accent-cyan);
+        }
+
+        /* Main Layout */
+        .workspace {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            flex-direction: row;
+        }
+
+        /* Canvas */
+        #sim-canvas {
+            flex-grow: 1; 
+            min-width: 0;
+            background: radial-gradient(circle at 50% 50%, #0b0b10 0%, #000000 100%);
+            cursor: crosshair;
+        }
+
+        /* Right Sidebar - Fixed Width */
+        .sidebar {
+            width: 320px;
+            min-width: 320px; /* 关键：防止压缩 */
+            flex-shrink: 0;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 50;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Particle Grid */
+        .particle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .p-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            transition: 0.2s;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .p-btn:hover { background: rgba(255,255,255,0.1); }
+        .p-btn.active {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2) inset;
+        }
+        
+        .p-btn span { display: block; font-weight: bold; font-size: 1rem; }
+        .p-btn small { font-size: 0.6rem; opacity: 0.7; }
+
+        /* Force Sliders */
+        .force-control { margin-bottom: 15px; }
+        .force-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+        input[type=range] {
+            flex: 1; height: 4px; background: #333; appearance: none; border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none; width: 14px; height: 14px; background: var(--accent-cyan); border-radius: 50%; cursor: pointer;
+        }
+        .toggle-switch { position: relative; display: inline-block; width: 36px; height: 18px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider-toggle {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333; transition: .4s; border-radius: 34px;
+        }
+        .slider-toggle:before {
+            position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider-toggle { background-color: var(--accent-cyan); }
+        input:checked + .slider-toggle:before { transform: translateX(18px); }
+
+        /* Stats */
+        .stat-row {
+            display: flex; justify-content: space-between; font-size: 0.8rem;
+            font-family: 'Space Mono', monospace; margin-bottom: 6px; color: var(--text-dim);
+        }
+        .stat-val { color: var(--text-main); }
+
+        /* Chart Page */
+        #chart-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; display: none; justify-content: center; align-items: center;
+            z-index: 60; padding: 40px;
+        }
+        #chart-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* Tabs */
+        .tab-container { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 15px; }
+        .tab-btn {
+            flex: 1; background: none; border: none; color: var(--text-dim); padding: 8px; cursor: pointer; font-size: 0.8rem;
+        }
+        .tab-btn.active { color: var(--accent-cyan); border-bottom: 2px solid var(--accent-cyan); }
+
+        /* Tooltip */
+        #tooltip {
+            position: absolute; pointer-events: none; background: rgba(5, 5, 10, 0.95);
+            border: 1px solid var(--accent-cyan); padding: 12px; border-radius: 4px;
+            font-size: 0.8rem; z-index: 1000; opacity: 0; transform: translate(15px, 15px);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #tooltip h4 { margin-bottom: 5px; color: var(--accent-cyan); font-family: 'Rajdhani'; font-size: 1rem;}
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .workspace { flex-direction: column; }
+            .sidebar { width: 100%; min-width: 100%; height: 40%; order: 2; border-left: none; border-top: 1px solid var(--border-color); }
+            #sim-canvas { height: 60%; order: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="brand">
+            <span style="font-size:1.8rem;">⚛</span> 
+            <span data-lang="title">粒子物理实验室</span>
+        </div>
+        <div class="nav-controls">
+            <button id="view-sim" class="active" data-lang="nav_sim">交互模拟</button>
+            <button id="view-chart" data-lang="nav_chart">标准模型图谱</button>
+            <span style="width:1px; height:15px; background:var(--border-color); display:inline-block; vertical-align:middle; margin:0 10px;"></span>
+            <button onclick="setLang('zh')">中</button>
+            <button onclick="setLang('en')">EN</button>
+            <button onclick="setLang('ja')">JP</button>
+        </div>
+    </nav>
+
+    <div class="workspace">
+        
+        <canvas id="sim-canvas"></canvas>
+
+        <div class="sidebar">
+            
+            <div class="sidebar-section">
+                <h3 data-lang="sec_forces">力场控制 (Field Control)</h3>
+                
+                <div class="force-control">
+                    <div class="force-header">
+                        <span data-lang="force_em">电磁力 (EM Force)</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-em" checked>
+                            <span class="slider-toggle"></span>
+                        </label>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="slider-em" min="0" max="200" value="100">
+                    </div>
+                </div>
+
+                <div class="force-control">
+                    <div class="force-header">
+                        <span data-lang="force_strong">强相互作用 (Strong Force)</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-strong" checked>
+                            <span class="slider-toggle"></span>
+                        </label>
+                    </div>
+                    <div style="font-size:0.7rem; color:#666;" data-lang="force_strong_desc">*仅对夸克有效 (Quarks only)</div>
+                </div>
+
+                <div class="force-control">
+                    <div class="force-header">
+                        <span data-lang="force_gravity">引力 (Gravity)</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-gravity">
+                            <span class="slider-toggle"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="force-control">
+                    <div class="force-header">
+                        <span data-lang="force_higgs">希格斯场 (Higgs Field)</span>
+                        <span id="higgs-val" style="color:var(--accent-yellow)">5%</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="slider-higgs" min="0" max="100" value="5">
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 data-lang="sec_generator">粒子注入 (Injector)</h3>
+                
+                <div class="tab-container">
+                    <button class="tab-btn active" onclick="switchTab('sm')" data-lang="tab_sm">基本粒子</button>
+                    <button class="tab-btn" onclick="switchTab('comp')" data-lang="tab_comp">合成粒子</button>
+                </div>
+
+                <div id="tab-sm">
+                    <div style="margin-bottom:10px; color:var(--accent-red); font-size:0.8rem;">QUARKS</div>
+                    <div class="particle-grid">
+                        <button class="p-btn" data-id="u" style="border-color:var(--accent-red)"><span>u</span><small>Up</small></button>
+                        <button class="p-btn" data-id="c" style="border-color:var(--accent-red)"><span>c</span><small>Charm</small></button>
+                        <button class="p-btn" data-id="t" style="border-color:var(--accent-red)"><span>t</span><small>Top</small></button>
+                        <button class="p-btn" data-id="d" style="border-color:#ff642a"><span>d</span><small>Down</small></button>
+                        <button class="p-btn" data-id="s" style="border-color:#ff642a"><span>s</span><small>Strange</small></button>
+                        <button class="p-btn" data-id="b" style="border-color:#ff642a"><span>b</span><small>Bottom</small></button>
+                    </div>
+
+                    <div style="margin:10px 0; color:var(--accent-cyan); font-size:0.8rem;">LEPTONS</div>
+                    <div class="particle-grid">
+                        <button class="p-btn" data-id="e" style="border-color:var(--accent-cyan)"><span>e⁻</span><small>Electron</small></button>
+                        <button class="p-btn" data-id="mu" style="border-color:var(--accent-cyan)"><span>μ</span><small>Muon</small></button>
+                        <button class="p-btn" data-id="tau" style="border-color:var(--accent-cyan)"><span>τ</span><small>Tau</small></button>
+                        <button class="p-btn" data-id="ve" style="border-color:#00bfa5"><span>νe</span><small>Nu-E</small></button>
+                        <button class="p-btn" data-id="vm" style="border-color:#00bfa5"><span>νμ</span><small>Nu-Mu</small></button>
+                        <button class="p-btn" data-id="vt" style="border-color:#00bfa5"><span>ντ</span><small>Nu-Tau</small></button>
+                    </div>
+
+                    <div style="margin:10px 0; color:var(--accent-yellow); font-size:0.8rem;">BOSONS</div>
+                    <div class="particle-grid">
+                        <button class="p-btn" data-id="g" style="border-color:#ff9800"><span>g</span><small>Gluon</small></button>
+                        <button class="p-btn" data-id="photon" style="border-color:#fff"><span>γ</span><small>Photon</small></button>
+                        <button class="p-btn" data-id="z" style="border-color:#9c27b0"><span>Z</span><small>Boson</small></button>
+                        <button class="p-btn" data-id="w" style="border-color:#e91e63"><span>W</span><small>Boson</small></button>
+                        <button class="p-btn" data-id="h" style="border-color:var(--accent-yellow)"><span>H</span><small>Higgs</small></button>
+                    </div>
+                </div>
+
+                <div id="tab-comp" style="display:none;">
+                    <div style="margin-bottom:10px; color:var(--accent-purple); font-size:0.8rem;">HADRONS & ATOMS</div>
+                    <div class="particle-grid" style="grid-template-columns: 1fr 1fr;">
+                        <button class="p-btn" data-id="proton" style="border-color:#f44336"><span>p⁺</span><small>Proton</small></button>
+                        <button class="p-btn" data-id="neutron" style="border-color:#9e9e9e"><span>n⁰</span><small>Neutron</small></button>
+                        <button class="p-btn" data-id="hydrogen" style="border-color:#2196f3"><span>¹H</span><small>Hydrogen</small></button>
+                        <button class="p-btn" data-id="anti_e" style="border-color:#ffeb3b"><span>e⁺</span><small>Positron</small></button>
+                    </div>
+                    <p style="margin-top:15px; font-size:0.75rem; color:#666; line-height:1.4;">
+                        <span data-lang="note_composite">注意：合成粒子是由基础粒子组成的预设结构。反物质粒子也在此处。</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="sidebar-section" style="border-bottom:none;">
+                <h3 data-lang="sec_stats">实时数据 (Telemetry)</h3>
+                <div id="stats-panel">
+                    <div class="stat-row"><span data-lang="stat_count">Count</span><span class="stat-val" id="val-count">0</span></div>
+                    <div class="stat-row"><span data-lang="stat_energy">System Energy</span><span class="stat-val" id="val-energy">0 GeV</span></div>
+                </div>
+                <button id="clear-btn" style="width:100%; margin-top:20px; padding:12px; background:rgba(255,42,109,0.1); border:1px solid var(--accent-red); color:var(--accent-red); cursor:pointer; font-family:'Rajdhani'; font-weight:bold; text-transform:uppercase; letter-spacing:1px; transition:0.3s;">
+                    <span data-lang="btn_clear">清除所有 (FLUSH)</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="chart-overlay">
+        <img id="chart-img" src="标准模型.svg.png" alt="Standard Model Chart" onerror="this.style.display='none'; alert('请确保图片 标准模型.svg.png 存在于同级目录')">
+    </div>
+
+    <div id="tooltip"></div>
+
+<script>
+/* --- 1. Particle Data --- */
+const PARTICLES = {
+    u: { name: 'Up Quark', mass: 2.3, charge: 0.666, color: '#ff2a6d', type: 'quark', spin: 0.5, radius: 7 },
+    d: { name: 'Down Quark', mass: 4.8, charge: -0.333, color: '#ff642a', type: 'quark', spin: 0.5, radius: 7 },
+    c: { name: 'Charm Quark', mass: 1275, charge: 0.666, color: '#ff2a6d', type: 'quark', spin: 0.5, radius: 9, decay: 0.02 },
+    s: { name: 'Strange Quark', mass: 95, charge: -0.333, color: '#ff642a', type: 'quark', spin: 0.5, radius: 8, decay: 0.01 },
+    t: { name: 'Top Quark', mass: 173000, charge: 0.666, color: '#a00030', type: 'quark', spin: 0.5, radius: 10, decay: 0.2 }, 
+    b: { name: 'Bottom Quark', mass: 4180, charge: -0.333, color: '#a04000', type: 'quark', spin: 0.5, radius: 9, decay: 0.03 },
+    e: { name: 'Electron', mass: 0.511, charge: -1, color: '#00f3ff', type: 'lepton', spin: 0.5, radius: 5 },
+    mu: { name: 'Muon', mass: 105.7, charge: -1, color: '#0091ea', type: 'lepton', spin: 0.5, radius: 6, decay: 0.01 },
+    tau: { name: 'Tau', mass: 1776, charge: -1, color: '#304ffe', type: 'lepton', spin: 0.5, radius: 7, decay: 0.03 },
+    ve: { name: 'Electron Neutrino', mass: 0.001, charge: 0, color: '#00bfa5', type: 'lepton', spin: 0.5, radius: 3 },
+    vm: { name: 'Muon Neutrino', mass: 0.001, charge: 0, color: '#00bfa5', type: 'lepton', spin: 0.5, radius: 3 },
+    vt: { name: 'Tau Neutrino', mass: 0.001, charge: 0, color: '#00bfa5', type: 'lepton', spin: 0.5, radius: 3 },
+    g: { name: 'Gluon', mass: 0, charge: 0, color: '#ff9800', type: 'boson', spin: 1, radius: 4 },
+    photon: { name: 'Photon', mass: 0, charge: 0, color: '#ffffff', type: 'boson', spin: 1, radius: 4 },
+    z: { name: 'Z Boson', mass: 91187, charge: 0, color: '#9c27b0', type: 'boson', spin: 1, radius: 9, decay: 0.05 },
+    w: { name: 'W Boson', mass: 80379, charge: 1, color: '#e91e63', type: 'boson', spin: 1, radius: 9, decay: 0.05 },
+    h: { name: 'Higgs Boson', mass: 125100, charge: 0, color: '#ffeb3b', type: 'boson', spin: 0, radius: 10, decay: 0.05 },
+    anti_e: { name: 'Positron', mass: 0.511, charge: 1, color: '#ffff00', type: 'lepton', spin: 0.5, radius: 5 },
+};
+
+const COMPOSITES = {
+    proton: ['u', 'u', 'd'],
+    neutron: ['u', 'd', 'd'],
+    hydrogen: ['proton', 'e'],
+    anti_e: []
+};
+
+/* --- 2. Lang --- */
+const LANG = {
+    zh: {
+        title: "粒子物理实验室", nav_sim: "交互模拟", nav_chart: "标准模型图谱",
+        sec_forces: "力场控制", sec_generator: "粒子注入", sec_stats: "实时监测",
+        force_em: "电磁力", force_strong: "强相互作用", force_strong_desc: "*仅作用于夸克，模拟色荷禁闭",
+        force_gravity: "引力 (模拟)", force_higgs: "希格斯场 (质量阻尼)",
+        tab_sm: "基本粒子", tab_comp: "合成粒子", note_composite: "注：展示夸克组成的强子结构或原子结构。",
+        stat_count: "粒子总数", stat_energy: "系统动能", btn_clear: "清空实验室"
+    },
+    en: {
+        title: "Particle Physics Lab", nav_sim: "Simulation", nav_chart: "Model Chart",
+        sec_forces: "Force Control", sec_generator: "Injector", sec_stats: "Telemetry",
+        force_em: "EM Force", force_strong: "Strong Force", force_strong_desc: "*Quarks only. Simulates confinement.",
+        force_gravity: "Gravity (Sim)", force_higgs: "Higgs Field (Damping)",
+        tab_sm: "Elementary", tab_comp: "Composites", note_composite: "Note: Displays Hadron structures or Atoms.",
+        stat_count: "Particle Count", stat_energy: "Kinetic Energy", btn_clear: "FLUSH SYSTEM"
+    },
+    ja: {
+        title: "素粒子物理学ラボ", nav_sim: "シミュレーション", nav_chart: "標準模型図",
+        sec_forces: "力場制御", sec_generator: "粒子注入", sec_stats: "テレメトリー",
+        force_em: "電磁気力", force_strong: "強い相互作用", force_strong_desc: "*クォークのみ。閉じ込めをシミュレート。",
+        force_gravity: "重力 (模擬)", force_higgs: "ヒッグス場 (質量減衰)",
+        tab_sm: "素粒子", tab_comp: "複合粒子", note_composite: "注：ハドロン構造または原子を表示します。",
+        stat_count: "粒子総数", stat_energy: "運動エネルギー", btn_clear: "全消去"
+    }
+};
+let currentLang = 'zh';
+
+/* --- 3. Physics Engine --- */
+const canvas = document.getElementById('sim-canvas');
+const ctx = canvas.getContext('2d');
+let width, height;
+let particles = [];
+let selectedTool = 'e';
+
+const K_COULOMB = 100;
+const STRONG_FORCE_RANGE = 100;
+const STRONG_FORCE_STR = 15; 
+const G_GRAVITY = 0.5;
+
+let settings = { emEnabled: true, emStrength: 1.0, strongEnabled: true, gravityEnabled: false, higgsField: 0.05 };
+
+class Particle {
+    constructor(id, x, y, vx, vy) {
+        this.def = PARTICLES[id];
+        this.id = id;
+        this.x = x; this.y = y;
+        this.vx = vx !== undefined ? vx : (Math.random() - 0.5);
+        this.vy = vy !== undefined ? vy : (Math.random() - 0.5);
+        this.radius = this.def.radius;
+        this.mass = Math.max(0.5, Math.log10(this.def.mass + 2)); 
+        this.charge = this.def.charge;
+        this.color = this.def.color;
+        this.life = 0;
+    }
+    update() {
+        this.life++;
+        if (this.def.decay && Math.random() < this.def.decay) {
+            this.dead = true; createExplosion(this.x, this.y, this.color); return;
+        }
+        let fx = 0, fy = 0;
+        for (let p of particles) {
+            if (p === this) continue;
+            const dx = p.x - this.x; const dy = p.y - this.y;
+            const distSq = dx*dx + dy*dy; const dist = Math.sqrt(distSq);
+            if (dist < this.radius + p.radius) {
+                 if ((this.id === 'e' && p.id === 'anti_e') || (this.id === 'anti_e' && p.id === 'e')) {
+                     this.dead = true; p.dead = true; createExplosion((this.x+p.x)/2, (this.y+p.y)/2, '#fff'); return;
+                 }
+                 const push = 0.5 * (this.radius + p.radius - dist);
+                 fx -= (dx/dist) * push; fy -= (dy/dist) * push;
+            }
+            if (settings.emEnabled && dist > 10) {
+                const forceMag = K_COULOMB * settings.emStrength * (this.charge * p.charge) / distSq;
+                const interaction = -forceMag;
+                fx += (dx/dist) * interaction; fy += (dy/dist) * interaction;
+            }
+            if (settings.strongEnabled && this.def.type === 'quark' && p.def.type === 'quark') {
+                if (dist < STRONG_FORCE_RANGE && dist > 20) {
+                     const springF = STRONG_FORCE_STR * (dist - 20) * 0.01;
+                     fx += (dx/dist) * springF; fy += (dy/dist) * springF;
+                }
+            }
+            if (settings.gravityEnabled && dist > 10) {
+                const force = G_GRAVITY * (this.mass * p.mass) / distSq;
+                fx += (dx/dist) * force; fy += (dy/dist) * force;
+            }
+        }
+        this.vx += fx / this.mass; this.vy += fy / this.mass;
+        this.vx *= (1 - settings.higgsField * 0.1); this.vy *= (1 - settings.higgsField * 0.1);
+        this.x += this.vx; this.y += this.vy;
+        if (this.x < 0 || this.x > width) { this.vx *= -0.8; this.x = Math.max(0, Math.min(width, this.x)); }
+        if (this.y < 0 || this.y > height) { this.vy *= -0.8; this.y = Math.max(0, Math.min(height, this.y)); }
+    }
+    draw() {
+        ctx.shadowBlur = this.radius * 2; ctx.shadowColor = this.color; ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        if (this.radius > 4) {
+            ctx.fillStyle = '#000'; ctx.font = '9px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(this.id, this.x, this.y);
+        }
+    }
+}
+
+let explosions = [];
+function createExplosion(x, y, color) { explosions.push({x, y, color, life: 25, r: 2}); }
+
+/* --- 4. Main Loop --- */
+function init() {
+    resize(); window.addEventListener('resize', resize);
+    setTimeout(() => spawnComposite('hydrogen', width/2, height/2), 100);
+    loop();
+}
+
+function loop() {
+    ctx.fillStyle = 'rgba(3, 3, 5, 0.3)'; ctx.fillRect(0, 0, width, height);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+            const p1 = particles[i]; const p2 = particles[j];
+            const dx = p1.x - p2.x; const dy = p1.y - p2.y; const dist = Math.sqrt(dx*dx + dy*dy);
+            if (settings.strongEnabled && p1.def.type === 'quark' && p2.def.type === 'quark' && dist < STRONG_FORCE_RANGE) {
+                ctx.strokeStyle = `rgba(255, 42, 109, ${1 - dist/STRONG_FORCE_RANGE})`;
+                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+            } else if (dist < 80 && (p1.charge * p2.charge !== 0)) {
+                 const isRepel = p1.charge * p2.charge > 0;
+                 ctx.strokeStyle = isRepel ? `rgba(255, 50, 50, ${0.1 * (1 - dist/80)})` : `rgba(0, 243, 255, ${0.1 * (1 - dist/80)})`;
+                 ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+            }
+        }
+    }
+    particles = particles.filter(p => !p.dead);
+    particles.forEach(p => { p.update(); p.draw(); });
+    explosions.forEach((e, i) => {
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.strokeStyle = e.color; ctx.stroke();
+        e.r += 1.5; e.life--; if(e.life <= 0) explosions.splice(i, 1);
+    });
+    document.getElementById('val-count').innerText = particles.length;
+    let energy = particles.reduce((acc, p) => acc + (0.5 * p.mass * (p.vx*p.vx + p.vy*p.vy)), 0);
+    document.getElementById('val-energy').innerText = energy.toFixed(1) + " GeV";
+    requestAnimationFrame(loop);
+}
+
+/* --- 5. Interaction --- */
+function spawnComposite(type, x, y) {
+    if (type === 'proton') {
+        spawnParticle('u', x-4, y+2, 0, 0); spawnParticle('u', x+4, y+2, 0, 0); spawnParticle('d', x, y-5, 0, 0);
+    } else if (type === 'neutron') {
+        spawnParticle('u', x, y-5, 0, 0); spawnParticle('d', x-4, y+2, 0, 0); spawnParticle('d', x+4, y+2, 0, 0);
+    } else if (type === 'hydrogen') {
+        spawnComposite('proton', x, y);
+        let e = new Particle('e', x + 60, y, 0, 2.5); particles.push(e);
+    } else if (type === 'anti_e') {
+        spawnParticle('anti_e', x, y);
+    }
+}
+function spawnParticle(id, x, y, vx, vy) { particles.push(new Particle(id, x, y, vx, vy)); }
+
+canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
+    if (['proton', 'neutron', 'hydrogen', 'anti_e'].includes(selectedTool)) spawnComposite(selectedTool, clickX, clickY);
+    else if (PARTICLES[selectedTool]) spawnParticle(selectedTool, clickX, clickY);
+});
+
+document.querySelectorAll('.p-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.p-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active'); selectedTool = btn.dataset.id;
+    });
+});
+
+window.switchTab = (tab) => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-sm').style.display = tab === 'sm' ? 'block' : 'none';
+    document.getElementById('tab-comp').style.display = tab === 'comp' ? 'block' : 'none';
+};
+
+document.getElementById('slider-em').oninput = (e) => settings.emStrength = e.target.value / 100;
+document.getElementById('toggle-em').onchange = (e) => settings.emEnabled = e.target.checked;
+document.getElementById('toggle-strong').onchange = (e) => settings.strongEnabled = e.target.checked;
+document.getElementById('toggle-gravity').onchange = (e) => settings.gravityEnabled = e.target.checked;
+document.getElementById('slider-higgs').oninput = (e) => {
+    settings.higgsField = e.target.value / 100; document.getElementById('higgs-val').innerText = e.target.value + '%';
+};
+document.getElementById('clear-btn').onclick = () => particles = [];
+
+const chartOverlay = document.getElementById('chart-overlay');
+document.getElementById('view-chart').onclick = () => {
+    chartOverlay.style.display = 'flex';
+    document.getElementById('view-chart').classList.add('active'); document.getElementById('view-sim').classList.remove('active');
+};
+document.getElementById('view-sim').onclick = () => {
+    chartOverlay.style.display = 'none';
+    document.getElementById('view-chart').classList.remove('active'); document.getElementById('view-sim').classList.add('active');
+};
+
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+    let hit = particles.find(p => Math.hypot(p.x-x, p.y-y) < p.radius + 8);
+    const tooltip = document.getElementById('tooltip');
+    if (hit) {
+        tooltip.style.opacity = 1; tooltip.style.left = e.clientX + 'px'; tooltip.style.top = e.clientY + 'px';
+        tooltip.innerHTML = `<h4>${hit.def.name}</h4>Charge: ${hit.def.charge}<br>Mass: ${hit.def.mass} MeV`;
+        tooltip.style.borderColor = hit.color;
+    } else { tooltip.style.opacity = 0; }
+});
+
+window.setLang = (l) => {
+    currentLang = l;
+    document.querySelectorAll('[data-lang]').forEach(el => {
+        const k = el.dataset.lang; if(LANG[l][k]) el.innerText = LANG[l][k];
+    });
+};
+function resize() {
+    const rect = canvas.getBoundingClientRect(); width = canvas.width = rect.width; height = canvas.height = rect.height;
+}
+
+init();
+setLang('zh');
+</script>
+</body>
+</html>
